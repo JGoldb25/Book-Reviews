@@ -1,0 +1,135 @@
+---
+title: "Book Reviews Analysis"
+author: "Joshua Goldberg"
+date: "8/18/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+```
+
+## Summary
+During this project, the focus was to explore book reviews and to understand their performance on profitability based on several different measurement metrics. Evaluating the data enabled me to explore several data cleansing and data analysis steps while identifying issues within the data for future data preparation steps.
+
+
+## Goal
+The goal of this project was to evaluate book profitability. This was done by analyzing total books sold, and total revenue earned from books, by looking at a slightly cleaned-up version of this initial data set.
+
+
+## Introduction
+The motivation for this analysis was to employ several new techniques in R loops in order to catalyze data analysis steps. I also wanted to identify the profitability of books for quick comparison to other another. The data for this project was mostly clean, other than several small issues. I had to address an inconsistency in naming for the State variable, which contained abbreviated and fully-written-out versions of state names. I also had to address and remove missing values for around 200 or so of the reviews for the books. While I could have chosen to also impute this data, for the time being this was the route I chose to take. Once again, the goal here was to see which books were the most profitable.
+
+
+## Findings
+In order to probe through this data, I took several different steps, such as looking for unique values across the data, finding and removing missing values, converting text values to numeric integers for quicker analysis,and some summarisation statistics and brief visualizations to analyze this data. To address the goal for this project, there were two questions to answer, which were: Which books generated the greatest revenue, and which books sold the most copies.
+
+
+# Conclusion
+To answer the main question - the book that generated the most revenue was 'Secrets of R for Advanced Students', while the book which sold the most copies was 'Fundamentals of R for Beginners'. There are certain limitations to the analysis, like the small size of the dataset, and the lack of understanding about this data was collected. Knowing this information could impact how we perceive this data, and what the ramifications of this data might be within a larger context. For readers viewing this data, feel free to utilize these summary results when deciding which R book to pick up next and when deciding between these different options. However, don't take this analysis as complete truth, since we did have missing values which could have swayed the results from this project. Have fun reading!
+
+
+
+## Analysis
+```{r analysis}
+
+#load in data
+book_reviews <- read_csv("C:/Users/Goldbej6/Desktop/Learning/R/Book_Reviews_Project/book_reviews.csv")
+
+#quick df analysis
+dim(book_reviews) ##2000 rows and 4 columns in dataset
+
+#Column Names
+vector_cols <- colnames(book_reviews)
+vector_cols #the columns represent book name, performance review of book, state of publication, and book overall price
+glimpse(book_reviews)
+
+#Datatypes
+col_types <- for (c in colnames(book_reviews)) {
+  typeof(book_reviews[[c]])
+}
+
+col_types
+
+#Unique Values
+for (c in vector_cols) {
+  print("Unique column values:")
+  print(c)
+  print(unique(book_reviews[[c]]))
+  print(" ")
+} 
+
+
+#Locating and Removing Missing Values
+new_reviews <- book_reviews %>% 
+  filter(!(is.na(book_reviews$review)))
+
+dim(new_reviews) #new dataset has 1,794 rows and 4 columns; there were 206 rows with missing values
+
+
+#Dataset States
+unique(new_reviews$state)
+
+new_reviews <- new_reviews %>% 
+  mutate(
+    state = case_when(
+      state == "California" ~ "CA",
+      state == "New York" ~ "NY",
+      state == "Texas" ~ "TX",
+      state == "Florida" ~ "FL",
+      TRUE ~ state # when the values are already correct/abbreviations, keep them the same
+    )
+  )
+
+
+#Data Cleaning - Column Integer Conversions
+new_reviews <- new_reviews %>% 
+  mutate(
+    review_num = case_when(
+      review == "Poor" ~ 1,
+      review == "Fair" ~ 2,
+      review == "Good" ~ 3,
+      review == "Great" ~ 4,
+      review == "Excellent" ~ 5
+    ),
+    is_high_review = if_else(review_num >= 4, TRUE, FALSE)
+  )
+
+
+#Book Profitability Comparison Analyses
+profit_analysis <- new_reviews %>%
+  group_by(book) %>% 
+  summarize(
+    total_profit = sum(price)
+  ) %>% 
+  arrange(-(total_profit))
+
+
+purchase_analysis <- new_reviews %>%
+  group_by(book) %>% 
+  summarize(
+    total_count = n()
+  ) %>% 
+  arrange(-(total_count))
+
+book_profit_comp <- left_join(profit_analysis, purchase_analysis, by = "book")  
+#While the 'Secrets Of R For Advanced Students' was the most profitable book by total purchase price across all books, the book most frequently purchased was actually Fundamentals of R For Beginners
+
+
+library(ggplot2)
+```
+
+## Comparing Book Profit
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+qplot(x = book,
+      y = total_profit,
+      color = total_count,
+      data = book_profit_comp)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
